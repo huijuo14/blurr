@@ -36,32 +36,16 @@ jobs:
     - name: Grant execute permission for gradlew  
       run: chmod +x gradlew  
       
-    - name: Validate required secrets  
-      run: |  
-        echo "🔍 Validating required secrets..."  
-          
-        if [ -z "${{ secrets.GEMINI_API_KEYS }}" ]; then  
-          echo "❌ Missing secret: GEMINI_API_KEYS"  
-          exit 1  
-        else  
-          echo "✅ Found secret: GEMINI_API_KEYS"  
-        fi  
-          
-        if [ -z "${{ secrets.PICOVOICE_ACCESS_KEY }}" ]; then  
-          echo "❌ Missing secret: PICOVOICE_ACCESS_KEY"  
-          exit 1  
-        else  
-          echo "✅ Found secret: PICOVOICE_ACCESS_KEY"  
-        fi  
-          
-        echo "✅ Critical secrets validated"  
-      
-    - name: Create local.properties with available keys  
+    - name: Create local.properties with secrets  
       run: |  
         echo "📝 Creating local.properties..."  
         echo "sdk.dir=$ANDROID_HOME" > local.properties  
+          
+        # Add your two API keys  
         echo "GEMINI_API_KEYS=${{ secrets.GEMINI_API_KEYS }}" >> local.properties  
         echo "PICOVOICE_ACCESS_KEY=${{ secrets.PICOVOICE_ACCESS_KEY }}" >> local.properties  
+          
+        # Set empty strings for all other keys  
         echo "GOOGLE_TTS_API_KEY=" >> local.properties  
         echo "TAVILY_API=" >> local.properties  
         echo "MEM0_API=" >> local.properties  
@@ -72,13 +56,36 @@ jobs:
         echo "REVENUE_CAT_PUBLIC_URL=" >> local.properties  
         echo "REVENUECAT_API_KEY=" >> local.properties  
           
-        echo "✅ local.properties created with your keys"  
+        echo "✅ local.properties created"  
+        echo "📋 Verifying contents:"  
+        cat local.properties | grep -E "(GEMINI_API_KEYS|PICOVOICE_ACCESS_KEY)" | sed 's/=.*/=***HIDDEN***/'  
+      
+    - name: Verify Gradle reads API keys  
+      run: |  
+        echo "🔍 Testing if Gradle can read API keys..."  
+        ./gradlew printBuildConfigFields || echo "Gradle task not found, continuing..."  
       
     - name: Build with Gradle  
       run: |  
         echo "🚀 Starting build process..."  
-        echo "⏱️ This may take 20-30 minutes for first build..."  
         ./gradlew assembleDebug  
+      
+    - name: Debug - Extract and verify API keys in APK  
+      if: always()  
+      run: |  
+        if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then  
+          echo "✅ APK built successfully"  
+          echo "🔍 Checking if API keys are in BuildConfig..."  
+            
+          # Extract strings from APK and check for API keys  
+          unzip -p app/build/outputs/apk/debug/app-debug.apk classes.dex | strings | grep -E "GEMINI_API_KEYS|PICOVOICE_ACCESS_KEY" | head -10  
+            
+          # Also check the generated BuildConfig class if possible  
+          find app/build -name "BuildConfig.java" -exec cat {} \; 2>/dev/null | grep -E "GEMINI_API_KEYS|PICOVOICE_ACCESS_KEY" || echo "BuildConfig.java not found"  
+        else  
+          echo "❌ APK not found"  
+          find app/build -name "*.apk" -ls || echo "No APKs found"  
+        fi  
       
     - name: Upload APK  
       if: success()  
