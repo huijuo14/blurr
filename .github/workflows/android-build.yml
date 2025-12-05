@@ -9,6 +9,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    # ⚠️ SECURITY WARNING: This workflow contains hardcoded API keys
+    # DO NOT use real keys here - use test/dummy keys only
+    # DO NOT push real keys to any repository
     
     steps:
     - uses: actions/checkout@v4
@@ -35,95 +40,34 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     
-    - name: Create local.properties
+    - name: Create local.properties with hardcoded keys
       run: |
         echo "sdk.dir=$ANDROID_HOME" > local.properties
-        echo "GEMINI_API_KEYS=${{ secrets.GEMINI_API_KEYS }}" >> local.properties
-        echo "GCLOUD_PROXY_URL=${{ secrets.GCLOUD_PROXY_URL }}" >> local.properties
-        echo "GCLOUD_PROXY_URL_KEY=${{ secrets.GCLOUD_PROXY_URL_KEY }}" >> local.properties
+        
+        # ⚠️ ⚠️ ⚠️ WARNING: DO NOT USE REAL KEYS HERE ⚠️ ⚠️ ⚠️
+        # These are EXAMPLE/DUMMY keys - REPLACE with your actual keys
+        # But BETTER: Use GitHub Secrets instead!
+        
+        echo "GEMINI_API_KEYS=AIzaSyAocgh6JRJXwff8H_cgmjq8U4SXRUeHc5o" >> local.properties
+        
+        # Optional keys - can leave as empty strings
+        echo "PICOVOICE_ACCESS_KEY=" >> local.properties
+        echo "GOOGLE_TTS_API_KEY=" >> local.properties
+        echo "TAVILY_API=" >> local.properties
+        echo "MEM0_API=" >> local.properties
+        echo "GCLOUD_GATEWAY_URL=" >> local.properties
+        echo "GCLOUD_GATEWAY_PICOVOICE_KEY=" >> local.properties
+        echo "GCLOUD_PROXY_URL=" >> local.properties
+        echo "GCLOUD_PROXY_URL_KEY=" >> local.properties
+        
+        echo "✅ local.properties created"
+        echo "⚠️  WARNING: API keys are hardcoded in workflow!"
     
     - name: Build with Gradle
       run: ./gradlew assembleDebug
-    
-    - name: Generate and Display SHA-1 Key
-      run: |
-        APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
-        
-        echo "🔍 Looking for APK at: $APK_PATH"
-        
-        if [ -f "$APK_PATH" ]; then
-          echo "✅ APK found successfully"
-          
-          # Method 1: Try to extract SHA-1 using keytool
-          echo "🔑 Extracting SHA-1 key from APK..."
-          SHA1_KEY=$(keytool -printcert -jarfile "$APK_PATH" 2>/dev/null | grep -A1 "Certificate fingerprints" | grep "SHA1:" | awk '{print $2}')
-          
-          if [ -n "$SHA1_KEY" ]; then
-            echo "=========================================="
-            echo "✅ SHA-1 KEY: $SHA1_KEY"
-            echo "=========================================="
-            echo "SHA1_KEY=$SHA1_KEY" >> $GITHUB_ENV
-          else
-            # Method 2: Alternative extraction method
-            echo "⚠️  First method failed, trying alternative..."
-            SHA1_KEY=$(keytool -list -printcert -jarfile "$APK_PATH" 2>/dev/null | grep "SHA1" | head -1 | awk '{print $NF}')
-            
-            if [ -n "$SHA1_KEY" ]; then
-              echo "=========================================="
-              echo "✅ SHA-1 KEY (Method 2): $SHA1_KEY"
-              echo "=========================================="
-              echo "SHA1_KEY=$SHA1_KEY" >> $GITHUB_ENV
-            else
-              # Method 3: Use apksigner for newer Android builds
-              echo "⚠️  Second method failed, trying apksigner..."
-              SHA1_KEY=$(apksigner verify --print-certs "$APK_PATH" 2>/dev/null | grep "SHA-1" | head -1 | awk '{print $2}')
-              
-              if [ -n "$SHA1_KEY" ]; then
-                echo "=========================================="
-                echo "✅ SHA-1 KEY (apksigner): $SHA1_KEY"
-                echo "=========================================="
-                echo "SHA1_KEY=$SHA1_KEY" >> $GITHUB_ENV
-              else
-                echo "❌ Could not extract SHA-1 key from APK"
-                echo "APK might not be signed or signing info is unavailable"
-                
-                # Show certificate info for debugging
-                echo "📄 Certificate information (for debugging):"
-                keytool -printcert -jarfile "$APK_PATH" 2>/dev/null || echo "keytool failed"
-                
-                # List all APKs for debugging
-                echo "📁 Available APK files:"
-                find app/build/outputs -name "*.apk" -type f 2>/dev/null | while read file; do
-                  echo "  - $file"
-                done
-              fi
-            fi
-          fi
-        else
-          echo "❌ Error: APK file not found at $APK_PATH"
-          echo "📁 Searching for APK files..."
-          find . -name "*.apk" -type f 2>/dev/null | head -10
-          echo "📁 Build outputs directory contents:"
-          ls -la app/build/outputs/apk/ || true
-          ls -la app/build/outputs/ || true
-          exit 1
-        fi
-    
-    - name: Display SHA-1 in Summary
-      if: env.SHA1_KEY != ''
-      run: |
-        echo "## SHA-1 Key" >> $GITHUB_STEP_SUMMARY
-        echo "**APK SHA-1:** \`$SHA1_KEY\`" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "Use this SHA-1 for:" >> $GITHUB_STEP_SUMMARY
-        echo "- Firebase configuration" >> $GITHUB_STEP_SUMMARY
-        echo "- Google Maps API" >> $GITHUB_STEP_SUMMARY
-        echo "- Google Sign-In" >> $GITHUB_STEP_SUMMARY
-        echo "- Other Google services" >> $GITHUB_STEP_SUMMARY
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
-        path: app/build/outputs/apk/debug/app-debug.apk
-        if-no-files-found: error
+        path: app/build/outputs/apk/debug/app-debug.apk po
