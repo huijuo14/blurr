@@ -1,73 +1,61 @@
-name: Android CI
-
-on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    
-    # ⚠️ SECURITY WARNING: This workflow contains hardcoded API keys
-    # DO NOT use real keys here - use test/dummy keys only
-    # DO NOT push real keys to any repository
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-    
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v2
-    
-    - name: Cache Gradle packages
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-
-    
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-    
-    - name: Create local.properties with hardcoded keys
-      run: |
-        echo "sdk.dir=$ANDROID_HOME" > local.properties
-        
-        # ⚠️ ⚠️ ⚠️ WARNING: DO NOT USE REAL KEYS HERE ⚠️ ⚠️ ⚠️
-        # These are EXAMPLE/DUMMY keys - REPLACE with your actual keys
-        # But BETTER: Use GitHub Secrets instead!
-        
-        echo "GEMINI_API_KEYS=AIzaSyAocgh6JRJXwff8H_cgmjq8U4SXRUeHc5o" >> local.properties
-        
-        # Optional keys - can leave as empty strings
-        echo "PICOVOICE_ACCESS_KEY=" >> local.properties
-        echo "GOOGLE_TTS_API_KEY=" >> local.properties
-        echo "TAVILY_API=" >> local.properties
-        echo "MEM0_API=" >> local.properties
-        echo "GCLOUD_GATEWAY_URL=" >> local.properties
-        echo "GCLOUD_GATEWAY_PICOVOICE_KEY=" >> local.properties
-        echo "GCLOUD_PROXY_URL=" >> local.properties
-        echo "GCLOUD_PROXY_URL_KEY=" >> local.properties
-        
-        echo "✅ local.properties created"
-        echo "⚠️  WARNING: API keys are hardcoded in workflow!"
-    
-    - name: Build with Gradle
-      run: ./gradlew assembleDebug
-    
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-debug
+name: Android CI  
+  
+on:  
+  push:  
+    branches: [ main, master ]  
+  pull_request:  
+    branches: [ main, master ]  
+  
+jobs:  
+  build:  
+    runs-on: ubuntu-latest  
+    timeout-minutes: 60  
+      
+    steps:  
+    - uses: actions/checkout@v4  
+      
+    - name: Set up JDK 17  
+      uses: actions/setup-java@v3  
+      with:  
+        java-version: '17'  
+        distribution: 'temurin'  
+      
+    - name: Setup Android SDK  
+      uses: android-actions/setup-android@v2  
+      
+    - name: Cache Gradle packages  
+      uses: actions/cache@v3  
+      with:  
+        path: |  
+          ~/.gradle/caches  
+          ~/.gradle/wrapper  
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}  
+        restore-keys: |  
+          ${{ runner.os }}-gradle-  
+      
+    - name: Grant execute permission for gradlew  
+      run: chmod +x gradlew  
+      
+    - name: Create local.properties with secrets  
+      run: |  
+        echo "sdk.dir=$ANDROID_HOME" > local.properties  
+        echo "GEMINI_API_KEYS=${{ secrets.GEMINI_API_KEYS }}" >> local.properties  
+        echo "PICOVOICE_ACCESS_KEY=${{ secrets.PICOVOICE_ACCESS_KEY }}" >> local.properties  
+        echo "GOOGLE_TTS_API_KEY=${{ secrets.GOOGLE_TTS_API_KEY }}" >> local.properties  
+        echo "TAVILY_API=${{ secrets.TAVILY_API }}" >> local.properties  
+        echo "MEM0_API=${{ secrets.MEM0_API }}" >> local.properties  
+        echo "GCLOUD_GATEWAY_URL=${{ secrets.GCLOUD_GATEWAY_URL }}" >> local.properties  
+        echo "GCLOUD_GATEWAY_PICOVOICE_KEY=${{ secrets.GCLOUD_GATEWAY_PICOVOICE_KEY }}" >> local.properties  
+        echo "GCLOUD_PROXY_URL=${{ secrets.GCLOUD_PROXY_URL }}" >> local.properties  
+        echo "GCLOUD_PROXY_URL_KEY=${{ secrets.GCLOUD_PROXY_URL_KEY }}" >> local.properties  
+        echo "REVENUE_CAT_PUBLIC_URL=${{ secrets.REVENUE_CAT_PUBLIC_URL }}" >> local.properties  
+        echo "REVENUECAT_API_KEY=${{ secrets.REVENUECAT_API_KEY }}" >> local.properties  
+      
+    - name: Build with Gradle  
+      run: ./gradlew assembleDebug  
+      
+    - name: Upload APK  
+      uses: actions/upload-artifact@v4  
+      with:  
+        name: app-debug  
         path: app/build/outputs/apk/debug/app-debug.apk
