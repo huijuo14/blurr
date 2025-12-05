@@ -9,7 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
 
     steps:
     - uses: actions/checkout@v4
@@ -36,63 +35,13 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
       
-    - name: Create local.properties with all required API keys
+    - name: Create local.properties
       run: |
         echo "sdk.dir=$ANDROID_HOME" > local.properties
         echo "GEMINI_API_KEYS=${{ secrets.GEMINI_API_KEYS }}" >> local.properties
-        echo "PICOVOICE_ACCESS_KEY=${{ secrets.PICOVOICE_ACCESS_KEY }}" >> local.properties
-        echo "TAVILY_API=${{ secrets.TAVILY_API }}" >> local.properties
-        echo "MEM0_API=${{ secrets.MEM0_API }}" >> local.properties
-        echo "GOOGLE_TTS_API_KEY=${{ secrets.GOOGLE_TTS_API_KEY }}" >> local.properties
-        echo "GCLOUD_GATEWAY_PICOVOICE_KEY=${{ secrets.GCLOUD_GATEWAY_PICOVOICE_KEY }}" >> local.properties
-        echo "GCLOUD_GATEWAY_URL=${{ secrets.GCLOUD_GATEWAY_URL }}" >> local.properties
         echo "GCLOUD_PROXY_URL=${{ secrets.GCLOUD_PROXY_URL }}" >> local.properties
         echo "GCLOUD_PROXY_URL_KEY=${{ secrets.GCLOUD_PROXY_URL_KEY }}" >> local.properties
-        
-    - name: Create google-services.json from file
-      run: |
-        cat > app/google-services.json << 'EOF'
-{
-  "project_info": {
-    "project_number": "4165990890",
-    "project_id": "test-eebf4",
-    "storage_bucket": "test-eebf4.firebasestorage.app"
-  },
-  "client": [
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:4165990890:android:35916c721b0ea939325a93",
-        "android_client_info": {
-          "package_name": "com.blurr.voice"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "4165990890-q1gqh61ehgru5gvrjd4konmif3omtab1.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyCY3fBq8Rg7DkihKlPhqGs27TFLdJtHw4s"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "4165990890-q1gqh61ehgru5gvrjd4konmif3omtab1.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
-    }
-  ],
-  "configuration_version": "1"
-}
-EOF
-        
+      
     - name: Build with Gradle
       run: ./gradlew assembleDebug
       
