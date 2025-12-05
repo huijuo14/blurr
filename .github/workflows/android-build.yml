@@ -40,7 +40,6 @@ jobs:
       run: |  
         echo "🔍 Validating required secrets..."  
           
-        # Only check the two secrets you have  
         if [ -z "${{ secrets.GEMINI_API_KEYS }}" ]; then  
           echo "❌ Missing secret: GEMINI_API_KEYS"  
           exit 1  
@@ -61,12 +60,8 @@ jobs:
       run: |  
         echo "📝 Creating local.properties..."  
         echo "sdk.dir=$ANDROID_HOME" > local.properties  
-          
-        # Add your two API keys  
         echo "GEMINI_API_KEYS=${{ secrets.GEMINI_API_KEYS }}" >> local.properties  
         echo "PICOVOICE_ACCESS_KEY=${{ secrets.PICOVOICE_ACCESS_KEY }}" >> local.properties  
-          
-        # Set empty strings for all other keys  
         echo "GOOGLE_TTS_API_KEY=" >> local.properties  
         echo "TAVILY_API=" >> local.properties  
         echo "MEM0_API=" >> local.properties  
@@ -82,9 +77,8 @@ jobs:
     - name: Build with Gradle  
       run: |  
         echo "🚀 Starting build process..."  
-        ./gradlew assembleDebug --info --stacktrace  
-      env:  
-        GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.debug=true  
+        echo "⏱️ This may take 20-30 minutes for first build..."  
+        ./gradlew assembleDebug  
       
     - name: Upload APK  
       if: success()  
