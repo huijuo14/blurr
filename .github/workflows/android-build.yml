@@ -49,7 +49,7 @@ jobs:
         echo "GCLOUD_PROXY_URL=${{ secrets.GCLOUD_PROXY_URL }}" >> local.properties
         echo "GCLOUD_PROXY_URL_KEY=${{ secrets.GCLOUD_PROXY_URL_KEY }}" >> local.properties
         
-    - name: Create google-services.json
+    - name: Create google-services.json from file
       run: |
         cat > app/google-services.json << 'EOF'
 {
