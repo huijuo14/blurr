@@ -45,29 +45,51 @@ jobs:
     - name: Validate required secrets  
       run: |  
         echo "🔍 Validating required secrets..."  
-        REQUIRED_SECRETS=("GEMINI_API_KEYS" "PICOVOICE_ACCESS_KEY" "GOOGLE_TTS_API_KEY" "TAVILY_API" "MEM0_API")  
-        MISSING_SECRETS=()  
           
-        for secret in "${REQUIRED_SECRETS[@]}"; do  
-          if [ -z "${{ secrets[secret] }}" ]; then  
-            MISSING_SECRETS+=("$secret")  
-            echo "❌ Missing secret: $secret"  
-          else  
-            echo "✅ Found secret: $secret (${{ secrets[secret] }}:0:20}...)"  
-          fi  
-        done  
-          
-        if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then  
-          echo "🚨 Build will fail due to missing secrets: ${MISSING_SECRETS[*]}"  
+        # Check each required secret explicitly  
+        if [ -z "${{ secrets.GEMINI_API_KEYS }}" ]; then  
+          echo "❌ Missing secret: GEMINI_API_KEYS"  
           exit 1  
+        else  
+          echo "✅ Found secret: GEMINI_API_KEYS"  
         fi  
+          
+        if [ -z "${{ secrets.PICOVOICE_ACCESS_KEY }}" ]; then  
+          echo "❌ Missing secret: PICOVOICE_ACCESS_KEY"  
+          exit 1  
+        else  
+          echo "✅ Found secret: PICOVOICE_ACCESS_KEY"  
+        fi  
+          
+        if [ -z "${{ secrets.GOOGLE_TTS_API_KEY }}" ]; then  
+          echo "❌ Missing secret: GOOGLE_TTS_API_KEY"  
+          exit 1  
+        else  
+          echo "✅ Found secret: GOOGLE_TTS_API_KEY"  
+        fi  
+          
+        if [ -z "${{ secrets.TAVILY_API }}" ]; then  
+          echo "❌ Missing secret: TAVILY_API"  
+          exit 1  
+        else  
+          echo "✅ Found secret: TAVILY_API"  
+        fi  
+          
+        if [ -z "${{ secrets.MEM0_API }}" ]; then  
+          echo "❌ Missing secret: MEM0_API"  
+          exit 1  
+        else  
+          echo "✅ Found secret: MEM0_API"  
+        fi  
+          
+        echo "✅ All critical secrets validated"  
       
     - name: Create local.properties with secrets and debug  
       run: |  
         echo "📝 Creating local.properties..."  
         echo "sdk.dir=$ANDROID_HOME" > local.properties  
           
-        # Add all required API keys with validation  
+        # Add all required API keys  
         echo "GEMINI_API_KEYS=${{ secrets.GEMINI_API_KEYS }}" >> local.properties  
         echo "PICOVOICE_ACCESS_KEY=${{ secrets.PICOVOICE_ACCESS_KEY }}" >> local.properties  
         echo "GOOGLE_TTS_API_KEY=${{ secrets.GOOGLE_TTS_API_KEY }}" >> local.properties  
