@@ -43,7 +43,7 @@ jobs:
         echo "GCLOUD_PROXY_URL_KEY=${{ secrets.GCLOUD_PROXY_URL_KEY }}" >> local.properties
       
     - name: Build with Gradle
-      run: ./gradlew assembleDebug
+      run: ./gradlew assembleDebug -x processDebugGoogleServices
       
     - name: Upload APK
       uses: actions/upload-artifact@v4
