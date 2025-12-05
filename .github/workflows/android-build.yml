@@ -1,4 +1,4 @@
-name: Android CI  
+name: Android CI with Debug  
   
 on:  
   push:  
@@ -36,9 +36,38 @@ jobs:
     - name: Grant execute permission for gradlew  
       run: chmod +x gradlew  
       
-    - name: Create local.properties with secrets  
+    - name: Debug - Show environment  
       run: |  
+        echo "Java version: $(java -version)"  
+        echo "Android SDK path: $ANDROID_HOME"  
+        echo "Gradle version: $(./gradlew --version)"  
+      
+    - name: Validate required secrets  
+      run: |  
+        echo "🔍 Validating required secrets..."  
+        REQUIRED_SECRETS=("GEMINI_API_KEYS" "PICOVOICE_ACCESS_KEY" "GOOGLE_TTS_API_KEY" "TAVILY_API" "MEM0_API")  
+        MISSING_SECRETS=()  
+          
+        for secret in "${REQUIRED_SECRETS[@]}"; do  
+          if [ -z "${{ secrets[secret] }}" ]; then  
+            MISSING_SECRETS+=("$secret")  
+            echo "❌ Missing secret: $secret"  
+          else  
+            echo "✅ Found secret: $secret (${{ secrets[secret] }}:0:20}...)"  
+          fi  
+        done  
+          
+        if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then  
+          echo "🚨 Build will fail due to missing secrets: ${MISSING_SECRETS[*]}"  
+          exit 1  
+        fi  
+      
+    - name: Create local.properties with secrets and debug  
+      run: |  
+        echo "📝 Creating local.properties..."  
         echo "sdk.dir=$ANDROID_HOME" > local.properties  
+          
+        # Add all required API keys with validation  
         echo "GEMINI_API_KEYS=${{ secrets.GEMINI_API_KEYS }}" >> local.properties  
         echo "PICOVOICE_ACCESS_KEY=${{ secrets.PICOVOICE_ACCESS_KEY }}" >> local.properties  
         echo "GOOGLE_TTS_API_KEY=${{ secrets.GOOGLE_TTS_API_KEY }}" >> local.properties  
@@ -50,12 +79,54 @@ jobs:
         echo "GCLOUD_PROXY_URL_KEY=${{ secrets.GCLOUD_PROXY_URL_KEY }}" >> local.properties  
         echo "REVENUE_CAT_PUBLIC_URL=${{ secrets.REVENUE_CAT_PUBLIC_URL }}" >> local.properties  
         echo "REVENUECAT_API_KEY=${{ secrets.REVENUECAT_API_KEY }}" >> local.properties  
+          
+        echo "✅ local.properties created"  
+        echo "📋 Contents (sanitized):"  
+        cat local.properties | sed 's/=.*/=***HIDDEN***/'  
       
-    - name: Build with Gradle  
-      run: ./gradlew assembleDebug  
+    - name: Debug - Verify Gradle configuration  
+      run: |  
+        echo "🔍 Verifying Gradle configuration..."  
+        ./gradlew tasks --all | grep -E "(assemble|build)" | head -20  
+        echo "📊 Project info:"  
+        ./gradlew projects  
+      
+    - name: Build with Gradle (Debug)  
+      run: |  
+        echo "🚀 Starting build process..."  
+        echo "⏱️ This may take 20-30 minutes for first build..."  
+        ./gradlew assembleDebug --info --stacktrace  
+      env:  
+        GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.debug=true  
+      
+    - name: Debug - Check APK contents  
+      if: always()  
+      run: |  
+        if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then  
+          echo "✅ APK built successfully"  
+          echo "📦 APK info:"  
+          ls -lh app/build/outputs/apk/debug/app-debug.apk  
+          echo "🔍 Checking BuildConfig fields:"  
+          unzip -p app/build/outputs/apk/debug/app-debug.apk classes.dex | strings | grep -E "(GEMINI_API_KEYS|PICOVOICE_ACCESS_KEY)" | head -5  
+        else  
+          echo "❌ APK not found"  
+          find app/build -name "*.apk" -ls || echo "No APKs found in build directory"  
+        fi  
       
     - name: Upload APK  
+      if: success()  
       uses: actions/upload-artifact@v4  
       with:  
         name: app-debug  
-        path: app/build/outputs/apk/debug/app-debug.apk
+        path: app/build/outputs/apk/debug/app-debug.apk  
+        retention-days: 30  
+      
+    - name: Upload build logs  
+      if: failure()  
+      uses: actions/upload-artifact@v4  
+      with:  
+        name: build-logs  
+        path: |  
+          app/build/logs/  
+          .gradle/  
+        retention-days: 7
