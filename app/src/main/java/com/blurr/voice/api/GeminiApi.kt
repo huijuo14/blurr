@@ -380,11 +380,35 @@ object GeminiApi {
     }
 
     private fun parseSuccessResponse(responseBody: String): String? {
+        Log.d("GeminiApi", "parseSuccessResponse received: ${responseBody.take(100)}...")
         return try {
-            val json = JSONObject(responseBody)
-            if (json.has("text")) {
-                return json.getString("text")
+            // Clean the response - remove markdown code blocks if present
+            var cleanedResponse = responseBody.trim()
+            // Handle multiline markdown responses
+            if (cleanedResponse.startsWith("```json")) {
+                // Find the first { after ```json
+                val jsonStart = cleanedResponse.indexOf('{')
+                if (jsonStart > 0) {
+                    cleanedResponse = cleanedResponse.substring(jsonStart)
+                } else {
+                    cleanedResponse = cleanedResponse.substring(7).trim()
+                }
+            } else if (cleanedResponse.startsWith("```")) {
+                // Find the first { after ```
+                val jsonStart = cleanedResponse.indexOf('{')
+                if (jsonStart > 0) {
+                    cleanedResponse = cleanedResponse.substring(jsonStart)
+                } else {
+                    cleanedResponse = cleanedResponse.substring(3).trim()
+                }
             }
+            // Remove trailing ```
+            if (cleanedResponse.endsWith("```")) {
+                cleanedResponse = cleanedResponse.substring(0, cleanedResponse.length - 3).trim()
+            }
+            Log.d("GeminiApi", "parseSuccessResponse cleaned: ${cleanedResponse.take(100)}...")
+            
+            val json = JSONObject(cleanedResponse)
             if (!json.has("candidates")) {
                 Log.w("GeminiApi", "API response has no 'candidates'. It was likely blocked. Full response: $responseBody")
                 if (json.has("error")) {
