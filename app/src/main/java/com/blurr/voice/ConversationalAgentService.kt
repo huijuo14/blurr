@@ -537,6 +537,8 @@ class ConversationalAgentService : Service() {
                 val defaultJsonResponse = """{"Type": "Reply", "Reply": "I'm sorry, I had an issue.", "Instruction": "", "Should End": "Continue"}"""
                 val rawModelResponse = getReasoningModelApiResponse(conversationHistory) ?: defaultJsonResponse
                 visualFeedbackManager.hideThinkingIndicator()
+                Log.d("ConvAgent", "Full raw response length: ${rawModelResponse.length}")
+                Log.d("ConvAgent", "Full raw response: $rawModelResponse")
                 val decision = parseModelResponse(rawModelResponse)
                 Log.d("TTS_DEBUG", "Reply received from GeminiApi: -->${rawModelResponse}<--")
                 when (decision.type) {
@@ -965,7 +967,32 @@ class ConversationalAgentService : Service() {
     }
     private fun parseModelResponse(response: String): ModelDecision {
         try {
-            val json = JSONObject(response)
+            // Clean the response - remove markdown code blocks if present
+            var cleanedResponse = response.trim()
+            // Handle multiline markdown responses
+            if (cleanedResponse.startsWith("```json")) {
+                // Find the first { after ```json
+                val jsonStart = cleanedResponse.indexOf('{')
+                if (jsonStart > 0) {
+                    cleanedResponse = cleanedResponse.substring(jsonStart)
+                } else {
+                    cleanedResponse = cleanedResponse.substring(7).trim()
+                }
+            } else if (cleanedResponse.startsWith("```")) {
+                // Find the first { after ```
+                val jsonStart = cleanedResponse.indexOf('{')
+                if (jsonStart > 0) {
+                    cleanedResponse = cleanedResponse.substring(jsonStart)
+                } else {
+                    cleanedResponse = cleanedResponse.substring(3).trim()
+                }
+            }
+            // Remove trailing ```
+            if (cleanedResponse.endsWith("```")) {
+                cleanedResponse = cleanedResponse.substring(0, cleanedResponse.length - 3).trim()
+            }
+            
+            val json = JSONObject(cleanedResponse)
             Log.d("justchecking", json.toString())
             // Use optString for safety, providing a default value if the key doesn't exist.
             val type = json.optString("Type", "Reply")
