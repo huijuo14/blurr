@@ -21,7 +21,10 @@ import com.blurr.voice.utilities.VisualFeedbackManager
 import com.blurr.voice.overlay.OverlayManager
 import com.blurr.voice.v2.actions.ActionExecutor
 import com.blurr.voice.v2.fs.FileSystem
-import com.blurr.voice.v2.llm.GeminiApi
+import com.blurr.voice.api.GeminiApi
+import com.blurr.voice.api.LlmApi
+import com.blurr.voice.api.OpenAiApi
+import com.blurr.voice.SettingsActivity
 import com.blurr.voice.v2.message_manager.MemoryManager
 import com.blurr.voice.v2.perception.Perception
 import com.blurr.voice.v2.perception.SemanticParser
@@ -62,7 +65,7 @@ class AgentService : Service() {
     private lateinit var fileSystem: FileSystem
     private lateinit var memoryManager: MemoryManager
     private lateinit var perception: Perception
-    private lateinit var llmApi: GeminiApi
+    private lateinit var llmApi: LlmApi
     private lateinit var actionExecutor: ActionExecutor
     private lateinit var overlayManager: OverlayManager
 
@@ -127,11 +130,13 @@ class AgentService : Service() {
         fileSystem = FileSystem(this,)
         memoryManager = MemoryManager(this, "", fileSystem, settings)
         perception = Perception(Eyes(this), SemanticParser())
-        llmApi = GeminiApi(
-            "gemini-2.5-flash",
-            apiKeyManager = ApiKeyManager,
-            maxRetry = 10
-        )
+        val sharedPreferences = getSharedPreferences("BlurrSettings", Context.MODE_PRIVATE)
+        val apiSelection = sharedPreferences.getString(SettingsActivity.KEY_API_SELECTION, "default")
+        llmApi = if (apiSelection == "custom") {
+            OpenAiApi
+        } else {
+            GeminiApi
+        }
         actionExecutor = ActionExecutor(Finger(this))
         agent = Agent(
             settings,

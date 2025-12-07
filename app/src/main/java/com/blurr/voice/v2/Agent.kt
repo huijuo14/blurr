@@ -6,7 +6,7 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import com.blurr.voice.v2.actions.ActionExecutor
 import com.blurr.voice.v2.fs.FileSystem
-import com.blurr.voice.v2.llm.GeminiApi
+import com.blurr.voice.api.LlmApi
 import com.blurr.voice.v2.llm.GeminiMessage
 import com.blurr.voice.v2.message_manager.MemoryManager
 import com.blurr.voice.v2.perception.Perception
@@ -34,7 +34,7 @@ class Agent(
     private val settings: AgentSettings,
     private val memoryManager: MemoryManager,
     private val perception: Perception,
-    private val llmApi: GeminiApi,
+    private val llmApi: LlmApi,
     private val actionExecutor: ActionExecutor,
     private val fileSystem: FileSystem,
     private val context: Context
@@ -59,7 +59,8 @@ class Agent(
     suspend fun run(initialTask: String, maxSteps: Int = 150) {
         if (initialTask.startsWith("open ", ignoreCase = true)) {
             val appName = initialTask.substringAfter("open ")
-            if (appName.isNotBlank()) {
+            val wordCount = appName.trim().split(Regex("\\s+")).size
+            if (appName.isNotBlank() && wordCount <= 2) {
                 Log.d(TAG, "--- Agent handling 'open app' command directly: '$appName' ---")
                 val openAppAction = com.blurr.voice.v2.actions.Action.OpenApp(appName)
                 val screenState = perception.analyze()
@@ -98,7 +99,7 @@ class Agent(
             // 3. THINK (Get Decision): Send the prepared messages to the LLM.
             Log.d(TAG,"🤔 Asking LLM for next action...")
             val messages = memoryManager.getMessages()
-            val agentOutput = llmApi.generateAgentOutput(messages)
+            val agentOutput = llmApi.generateContent(messages)
 
             // --- Handle LLM Failure ---
             if (agentOutput == null) {

@@ -26,7 +26,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 
-object GeminiApi {
+object GeminiApi : LlmApi {
     private val proxyUrl: String = BuildConfig.GCLOUD_PROXY_URL
     private val proxyKey: String = BuildConfig.GCLOUD_PROXY_URL_KEY
 
@@ -37,13 +37,14 @@ object GeminiApi {
         .build()
     val db = Firebase.firestore
 
-    suspend fun generateContent(
+    override suspend fun generateContent(
         chat: List<Pair<String, List<Any>>>,
-        images: List<Bitmap> = emptyList(),
-        modelName: String = "gemini-2.5-flash",
-        maxRetry: Int = 4,
-        context: Context? = null
+        images: List<Bitmap>,
+        modelName: String?
     ): String? {
+        val finalModelName = modelName ?: "gemini-2.5-flash"
+        val maxRetry = 4
+        val context = MyApplication.appContext
         try {
             val appCtx = context ?: MyApplication.appContext
             val isOnline = NetworkConnectivityManager(appCtx).isNetworkAvailable()
