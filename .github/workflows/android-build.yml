@@ -2,7 +2,7 @@ name: Android CI with Debug
   
 on:  
   push:  
-    branches: [ main, master ]
+    branches: [ main, master, feat-native-tts-open-app-freemium ]
   pull_request:  
     branches: [ main, master ]
   
