@@ -64,6 +64,11 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_onboarding)
 
+        findViewById<TextView>(R.id.skipLoginButton).setOnClickListener {
+            startActivity(Intent(this, MainActivity::class.java))
+            finish()
+        }
+
         signInButton = findViewById(R.id.googleSignInButton)
         // Customize Google Sign-In button appearance and text
         signInButton.setSize(SignInButton.SIZE_WIDE)

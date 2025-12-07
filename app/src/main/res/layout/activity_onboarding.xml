@@ -37,6 +37,22 @@
         android:layout_centerHorizontal="true"
         android:layout_marginTop="50dp" />
 
+    <TextView
+        android:id="@+id/skipLoginButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/googleSignInButton"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"
+        android:text="Skip for now"
+        android:textColor="@color/accent"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground"
+        android:padding="8dp"/>
+
     <LinearLayout
         android:id="@+id/dividerContainer"
         android:layout_width="match_parent"

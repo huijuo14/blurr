@@ -21,7 +21,7 @@ object OpenAiApi : LlmApi {
 
     override suspend fun generateContent(
         chat: List<Pair<String, List<Any>>>,
-        images: List<android.graphics.Bitmap>>,
+        images: List<android.graphics.Bitmap>,
         modelName: String?
     ): String? {
         val context = MyApplication.appContext
