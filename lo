@@ -1,5 +1,5 @@
 # Add your API keys here
-GEMINI_API_KEYS=AIzaSyATvvu_arhozzRKRjnhSYKMEdwWxYVQ
+GEMINI_API_KEYS=AIzaSyATvvu_arhozzRKRjnhSYKMEdwWxYV
 GCLOUD_PROXY_URL=your_proxy_url_here
 GCLOUD_PROXY_URL_KEY=your_proxy_key_here
 
