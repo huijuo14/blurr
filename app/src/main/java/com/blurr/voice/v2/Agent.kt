@@ -57,6 +57,23 @@ class Agent(
      * @param maxSteps The maximum number of steps the agent can take before stopping.
      */
     suspend fun run(initialTask: String, maxSteps: Int = 150) {
+        if (initialTask.startsWith("open ", ignoreCase = true)) {
+            val appName = initialTask.substringAfter("open ")
+            if (appName.isNotBlank()) {
+                Log.d(TAG, "--- Agent handling 'open app' command directly: '$appName' ---")
+                val openAppAction = com.blurr.voice.v2.actions.Action.OpenApp(appName)
+                val screenState = perception.analyze()
+                val result = actionExecutor.execute(openAppAction, screenState, context, fileSystem)
+                Log.d(TAG, "  - Action 'OpenApp' executed. Result: ${result.longTermMemory ?: result.error ?: "OK"}")
+                if (result.error != null) {
+                    speechCoordinator.speakToUser("Sorry, I couldn't open $appName. ${result.error}")
+                } else {
+                    speechCoordinator.speakToUser("Opening $appName")
+                }
+                state.stopped = true
+                return
+            }
+        }
         memoryManager.addNewTask(initialTask)
         state.stopped = false
         Log.d(TAG, "--- Agent starting task: '$initialTask' ---")
