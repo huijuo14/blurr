@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.ksp)
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.10"
     id("com.google.firebase.crashlytics")
+    id("io.github.takahirom.roborazzi") version "1.52.0"
 
 }
 
@@ -135,6 +136,10 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     // https://mvnrepository.com/artifact/androidx.test.uiautomator/uiautomator
     implementation("androidx.test.uiautomator:uiautomator:2.3.0")
+
+    // Roborazzi
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.52.0")
+    testImplementation("org.robolectric:robolectric:4.10.3")
 
     // Porcupine Wake Word Engine
     implementation("ai.picovoice:porcupine-android:3.0.2")
