@@ -105,7 +105,12 @@ class Agent(
                 }.map { com.google.ai.client.generativeai.type.TextPart(it) }
                 Pair(message.role.toString(), textParts)
             }
-            val agentOutput = llmApi.generateContent(apiChat)
+            val jsonResponse = llmApi.generateContent(apiChat)
+            val agentOutput: AgentOutput? = try {
+                com.google.gson.Gson().fromJson(jsonResponse, AgentOutput::class.java)
+            } catch (e: Exception) {
+                null
+            }
 
             // --- Handle LLM Failure ---
             if (agentOutput == null) {

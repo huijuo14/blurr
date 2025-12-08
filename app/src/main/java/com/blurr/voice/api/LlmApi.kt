@@ -7,5 +7,5 @@ interface LlmApi {
         chat: List<Pair<String, List<Any>>>,
         images: List<Bitmap> = emptyList(),
         modelName: String? = null
-    ): com.blurr.voice.v2.AgentOutput?
+    ): String?
 }
