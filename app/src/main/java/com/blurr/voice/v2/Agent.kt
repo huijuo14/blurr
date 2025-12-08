@@ -100,7 +100,10 @@ class Agent(
             Log.d(TAG,"🤔 Asking LLM for next action...")
             val messages = memoryManager.getMessages()
             val apiChat = messages.map { message ->
-                Pair(message.role.toString(), message.parts.map { com.google.ai.client.generativeai.type.TextPart(it.text) })
+                val textParts = message.parts.mapNotNull { part ->
+                    (part as? com.blurr.voice.v2.llm.TextPart)?.text
+                }.map { com.google.ai.client.generativeai.type.TextPart(it) }
+                Pair(message.role.toString(), textParts)
             }
             val jsonResponse = llmApi.generateContent(apiChat)
             val agentOutput: AgentOutput? = try {
