@@ -6,8 +6,10 @@ import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Button
-import android.widget.NumberPicker
+import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
@@ -18,23 +20,21 @@ import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import com.blurr.voice.api.GoogleTts
 import com.blurr.voice.api.PicovoiceKeyManager
-import com.blurr.voice.api.TTSVoice
 import com.blurr.voice.utilities.SpeechCoordinator
-import com.blurr.voice.utilities.VoicePreferenceManager
 import com.blurr.voice.utilities.UserProfileManager
 import com.blurr.voice.utilities.WakeWordManager
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.io.File
-import kotlin.coroutines.cancellation.CancellationException
 
 class SettingsActivity : BaseNavigationActivity() {
 
-    private lateinit var ttsVoicePicker: NumberPicker
+    private lateinit var apiSelectionGroup: RadioGroup
+    private lateinit var proxySettingsLayout: LinearLayout
+    private lateinit var proxyUrlEditText: EditText
+    private lateinit var proxyApiKeyEditText: EditText
+    private lateinit var proxyModelNameEditText: EditText
+    private lateinit var resetToDefaultButton: Button
     private lateinit var switchShowThoughts: com.google.android.material.switchmaterial.SwitchMaterial
     private lateinit var permissionsInfoButton: TextView
     private lateinit var batteryOptimizationHelpButton: TextView
@@ -51,15 +51,17 @@ class SettingsActivity : BaseNavigationActivity() {
 
     private lateinit var sc: SpeechCoordinator
     private lateinit var sharedPreferences: SharedPreferences
-    private lateinit var availableVoices: List<TTSVoice>
     private var voiceTestJob: Job? = null
 
     companion object {
         private const val PREFS_NAME = "BlurrSettings"
-        private const val KEY_SELECTED_VOICE = "selected_voice"
-        private const val TEST_TEXT = "Hello, I'm Panda, and this is a test of the selected voice."
-        private val DEFAULT_VOICE = TTSVoice.CHIRP_PUCK
         const val KEY_SHOW_THOUGHTS = "show_thoughts"
+        const val KEY_API_SELECTION = "api_selection"
+        const val KEY_PROXY_URL = "proxy_url"
+        const val KEY_PROXY_API_KEY = "proxy_api_key"
+        const val KEY_PROXY_MODEL_NAME = "proxy_model_name"
+        private const val API_SELECTION_DEFAULT = "default"
+        private const val API_SELECTION_PROXY = "proxy"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -82,12 +84,10 @@ class SettingsActivity : BaseNavigationActivity() {
         setupUI()
         loadAllSettings()
         setupAutoSavingListeners()
-        cacheVoiceSamples()
     }
 
     override fun onStop() {
         super.onStop()
-        // Stop any lingering voice tests when the user leaves the screen
         sc.stop()
         voiceTestJob?.cancel()
     }
@@ -95,13 +95,16 @@ class SettingsActivity : BaseNavigationActivity() {
     private fun initialize() {
         sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         sc = SpeechCoordinator.getInstance(this)
-        availableVoices = GoogleTts.getAvailableVoices()
-        // Initialize wake word manager
         wakeWordManager = WakeWordManager(this, requestPermissionLauncher)
     }
 
     private fun setupUI() {
-        ttsVoicePicker = findViewById(R.id.ttsVoicePicker)
+        apiSelectionGroup = findViewById(R.id.apiSelectionGroup)
+        proxySettingsLayout = findViewById(R.id.proxySettingsLayout)
+        proxyUrlEditText = findViewById(R.id.proxyUrlEditText)
+        proxyApiKeyEditText = findViewById(R.id.proxyApiKeyEditText)
+        proxyModelNameEditText = findViewById(R.id.proxyModelNameEditText)
+        resetToDefaultButton = findViewById(R.id.resetToDefaultButton)
         switchShowThoughts = findViewById(R.id.switchShowThoughts)
         permissionsInfoButton = findViewById(R.id.permissionsInfoButton)
         appVersionText = findViewById(R.id.appVersionText)
@@ -117,7 +120,6 @@ class SettingsActivity : BaseNavigationActivity() {
 
 
         setupClickListeners()
-        setupVoicePicker()
 
         // Prefill profile fields from saved values
         kotlin.runCatching {
@@ -131,14 +133,6 @@ class SettingsActivity : BaseNavigationActivity() {
         appVersionText.text = "Version $versionName"
     }
 
-    private fun setupVoicePicker() {
-        val voiceDisplayNames = availableVoices.map { it.displayName }.toTypedArray()
-        ttsVoicePicker.minValue = 0
-        ttsVoicePicker.maxValue = voiceDisplayNames.size - 1
-        ttsVoicePicker.displayedValues = voiceDisplayNames
-        ttsVoicePicker.wrapSelectorWheel = false
-    }
-
     private fun setupClickListeners() {
         permissionsInfoButton.setOnClickListener {
             val intent = Intent(this, PermissionsActivity::class.java)
@@ -150,14 +144,12 @@ class SettingsActivity : BaseNavigationActivity() {
         wakeWordButton.setOnClickListener {
             val keyManager = PicovoiceKeyManager(this)
             
-            // Step 1: Save key if provided in the EditText
             val userKey = editWakeWordKey.text.toString().trim()
             if (userKey.isNotEmpty()) {
                 keyManager.saveUserProvidedKey(userKey)
                 Toast.makeText(this, "Wake word key saved.", Toast.LENGTH_SHORT).show()
             }
             
-            // Step 2: Check if we have a key (either just saved or previously saved)
             val hasKey = !keyManager.getUserProvidedKey().isNullOrBlank()
             
             if (!hasKey) {
@@ -165,9 +157,7 @@ class SettingsActivity : BaseNavigationActivity() {
                 return@setOnClickListener
             }
             
-            // Step 3: Enable the wake word
             wakeWordManager.handleWakeWordButtonClick(wakeWordButton)
-            // Give the service a moment to update its state before refreshing the UI
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ updateWakeWordButtonState() }, 500)
         }
         textGetPicovoiceKeyLink.setOnClickListener {
@@ -177,7 +167,6 @@ class SettingsActivity : BaseNavigationActivity() {
             try {
                 startActivity(intent)
             } catch (e: Exception) {
-                // This might happen if the device has no web browser
                 Toast.makeText(this, "Could not open link. No browser found.", Toast.LENGTH_SHORT).show()
                 Log.e("SettingsActivity", "Failed to open Picovoice link", e)
             }
@@ -186,103 +175,75 @@ class SettingsActivity : BaseNavigationActivity() {
         buttonSignOut.setOnClickListener {
             showSignOutConfirmationDialog()
         }
+
+        resetToDefaultButton.setOnClickListener {
+            proxyUrlEditText.setText(BuildConfig.GCLOUD_PROXY_URL)
+            proxyApiKeyEditText.setText(BuildConfig.GCLOUD_PROXY_URL_KEY)
+            proxyModelNameEditText.setText("llama-3.3-70b-versatile")
+        }
     }
 
     private fun setupAutoSavingListeners() {
-        var isInitialLoad = true
-
-        ttsVoicePicker.setOnValueChangedListener { _, _, newVal ->
-            val selectedVoice = availableVoices[newVal]
-            saveSelectedVoice(selectedVoice)
-
-            if (!isInitialLoad) {
-                voiceTestJob?.cancel()
-                voiceTestJob = lifecycleScope.launch {
-                    delay(400L)
-                    // First, stop any currently playing voice
-                    sc.stop()
-                    // Then, play the new sample
-                    playVoiceSample(selectedVoice)
+        apiSelectionGroup.setOnCheckedChangeListener { _, checkedId ->
+            when (checkedId) {
+                R.id.defaultApiRadio -> {
+                    proxySettingsLayout.visibility = View.GONE
+                    sharedPreferences.edit { putString(KEY_API_SELECTION, API_SELECTION_DEFAULT) }
+                }
+                R.id.proxyApiRadio -> {
+                    proxySettingsLayout.visibility = View.VISIBLE
+                    sharedPreferences.edit { putString(KEY_API_SELECTION, API_SELECTION_PROXY) }
                 }
             }
         }
 
-        ttsVoicePicker.post {
-            isInitialLoad = false
-        }
+        proxyUrlEditText.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(s: android.text.Editable?) {
+                sharedPreferences.edit { putString(KEY_PROXY_URL, s.toString()) }
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
+        proxyApiKeyEditText.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(s: android.text.Editable?) {
+                sharedPreferences.edit { putString(KEY_PROXY_API_KEY, s.toString()) }
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
+        proxyModelNameEditText.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(s: android.text.Editable?) {
+                sharedPreferences.edit { putString(KEY_PROXY_MODEL_NAME, s.toString()) }
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
 
         switchShowThoughts.setOnCheckedChangeListener { _, isChecked ->
             sharedPreferences.edit().putBoolean(KEY_SHOW_THOUGHTS, isChecked).apply()
         }
     }
 
-    private fun playVoiceSample(voice: TTSVoice) {
-        lifecycleScope.launch {
-            val cacheDir = File(cacheDir, "voice_samples")
-            val voiceFile = File(cacheDir, "${voice.name}.wav")
-
-            try {
-                if (voiceFile.exists()) {
-                    val audioData = voiceFile.readBytes()
-                    sc.playAudioData(audioData)
-                    Log.d("SettingsActivity", "Playing cached sample for ${voice.displayName}")
-                } else {
-                    sc.testVoice(TEST_TEXT, voice)
-                    Log.d("SettingsActivity", "Synthesizing test for ${voice.displayName}")
-                }
-            } catch (e: Exception) {
-                if (e !is CancellationException) {
-                    Log.e("SettingsActivity", "Error playing voice sample", e)
-                    Toast.makeText(this@SettingsActivity, "Error playing voice", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-
-    private fun cacheVoiceSamples() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            val cacheDir = File(cacheDir, "voice_samples")
-            if (!cacheDir.exists()) cacheDir.mkdirs()
-
-            var downloadedCount = 0
-            for (voice in availableVoices) {
-                val voiceFile = File(cacheDir, "${voice.name}.wav")
-                if (!voiceFile.exists()) {
-                    try {
-                        val audioData = GoogleTts.synthesize(TEST_TEXT, voice)
-                        voiceFile.writeBytes(audioData)
-                        downloadedCount++
-                    } catch (e: Exception) {
-                        Log.e("SettingsActivity", "Failed to cache voice ${voice.name}", e)
-                    }
-                }
-            }
-            if (downloadedCount > 0) {
-                runOnUiThread {
-                    Toast.makeText(this@SettingsActivity, "$downloadedCount voice samples prepared.", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-
     private fun loadAllSettings() {
-
-        // Inside loadAllSettings()
         val keyManager = PicovoiceKeyManager(this)
-        editWakeWordKey.setText(keyManager.getUserProvidedKey() ?: "") // You will create this method next
-        val savedVoiceName = sharedPreferences.getString(KEY_SELECTED_VOICE, DEFAULT_VOICE.name)
-        val savedVoice = availableVoices.find { it.name == savedVoiceName } ?: DEFAULT_VOICE
-        ttsVoicePicker.value = availableVoices.indexOf(savedVoice)
-        
-        // Update wake word button state
+        editWakeWordKey.setText(keyManager.getUserProvidedKey() ?: "")
         updateWakeWordButtonState()
-
         switchShowThoughts.isChecked = sharedPreferences.getBoolean(KEY_SHOW_THOUGHTS, false)
-    }
 
-    private fun saveSelectedVoice(voice: TTSVoice) {
-        VoicePreferenceManager.saveSelectedVoice(this, voice)
-        Log.d("SettingsActivity", "Saved voice: ${voice.displayName}")
+        val apiSelection = sharedPreferences.getString(KEY_API_SELECTION, API_SELECTION_DEFAULT)
+        if (apiSelection == API_SELECTION_PROXY) {
+            apiSelectionGroup.check(R.id.proxyApiRadio)
+            proxySettingsLayout.visibility = View.VISIBLE
+        } else {
+            apiSelectionGroup.check(R.id.defaultApiRadio)
+            proxySettingsLayout.visibility = View.GONE
+        }
+
+        proxyUrlEditText.setText(sharedPreferences.getString(KEY_PROXY_URL, ""))
+        proxyApiKeyEditText.setText(sharedPreferences.getString(KEY_PROXY_API_KEY, ""))
+        proxyModelNameEditText.setText(sharedPreferences.getString(KEY_PROXY_MODEL_NAME, ""))
     }
 
     private fun showPicovoiceKeyRequiredDialog() {
@@ -290,7 +251,6 @@ class SettingsActivity : BaseNavigationActivity() {
             .setTitle("Picovoice Key Required")
             .setMessage("To enable wake word functionality, you need a Picovoice AccessKey. You can get a free key from the Picovoice Console. Note: The Picovoice dashboard might not be available on mobile browsers sometimes - you may need to use a desktop browser.")
             .setPositiveButton("Get Key") { _, _ ->
-                // Try to open Picovoice console
                 val url = "https://console.picovoice.ai/login"
                 val intent = Intent(Intent.ACTION_VIEW)
                 intent.data = Uri.parse(url)
@@ -306,7 +266,6 @@ class SettingsActivity : BaseNavigationActivity() {
             }
             .show()
         
-        // Set button text colors to white
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(
             androidx.core.content.ContextCompat.getColor(this, R.color.white)
         )
@@ -324,7 +283,6 @@ class SettingsActivity : BaseNavigationActivity() {
             .setTitle(getString(R.string.battery_optimization_title))
             .setMessage(getString(R.string.battery_optimization_message))
             .setPositiveButton(getString(R.string.learn_how)) { _, _ ->
-                // Open the Tasker FAQ URL
                 val url = "https://tasker.joaoapps.com/userguide/en/faqs/faq-problem.html#00"
                 val intent = Intent(Intent.ACTION_VIEW)
                 intent.data = Uri.parse(url)
@@ -340,7 +298,6 @@ class SettingsActivity : BaseNavigationActivity() {
             }
             .show()
         
-        // Set button text colors to white
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(
             androidx.core.content.ContextCompat.getColor(this, R.color.white)
         )
@@ -361,15 +318,9 @@ class SettingsActivity : BaseNavigationActivity() {
     }
 
     private fun signOut() {
-        // Clear User Profile
         val userProfileManager = UserProfileManager(this)
         userProfileManager.clearProfile()
-
-        // Clear all shared preferences for this app
         getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().clear().apply()
-
-
-        // Restart the app by navigating to the onboarding screen
         val intent = Intent(this, LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
