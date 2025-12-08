@@ -2,7 +2,7 @@ master: Android CI with Debug
   
 on:  
   push:  
-    branches: [ main, master, feat-native-tts-open-app-freemium ]
+    branches: [ main, feat-native-tts-open-app-freemium ]
   pull_request:  
     branches: [ main, master ]
   
