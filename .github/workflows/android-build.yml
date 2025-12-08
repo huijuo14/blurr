@@ -1,4 +1,4 @@
-master: Android CI with Debug  
+name: Android CI with Debug  
   
 on:  
   push:  
