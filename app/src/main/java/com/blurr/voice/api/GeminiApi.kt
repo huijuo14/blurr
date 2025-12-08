@@ -67,10 +67,10 @@ object GeminiApi : LlmApi {
         
         if (useProxy) {
             Log.i("GeminiApi", "Using proxy mode")
-            return generateContentViaProxy(chat, images, modelName, maxRetry, lastUserPrompt)
+            return generateContentViaProxy(chat, images, finalModelName, maxRetry, lastUserPrompt)
         } else {
             Log.i("GeminiApi", "Proxy not configured, using direct API mode")
-            return generateContentDirect(chat, images, modelName, maxRetry, lastUserPrompt)
+            return generateContentDirect(chat, images, finalModelName, maxRetry, lastUserPrompt)
         }
     }
 

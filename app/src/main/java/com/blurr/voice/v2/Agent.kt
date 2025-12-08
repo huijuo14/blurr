@@ -99,10 +99,18 @@ class Agent(
             // 3. THINK (Get Decision): Send the prepared messages to the LLM.
             Log.d(TAG,"🤔 Asking LLM for next action...")
             val messages = memoryManager.getMessages()
-            val agentOutput = llmApi.generateContent(messages)
+            val apiChat = messages.map { message ->
+                Pair(message.role, message.parts.map { com.google.ai.client.generativeai.type.TextPart(it.text) })
+            }
+            val jsonResponse = llmApi.generateContent(apiChat)
+            val agentOutput: AgentOutput? = try {
+                com.google.gson.Gson().fromJson(jsonResponse, AgentOutput::class.java)
+            } catch (e: Exception) {
+                null
+            }
 
             // --- Handle LLM Failure ---
-            if (agentOutput == null) {
+            if (agentOutput == null || jsonResponse == null) {
                 Log.d(TAG,"❌ LLM failed to return a valid action. Retrying...")
                 state.consecutiveFailures++
                 // Add a corrective message for the next attempt.
@@ -116,7 +124,7 @@ class Agent(
                 continue // Skip to the next loop iteration
             }
             state.consecutiveFailures = 0
-            state.lastModelOutput = agentOutput
+            state.lastModelOutput = com.google.gson.Gson().fromJson(jsonResponse, AgentOutput::class.java)
             Log.d(TAG, agentOutput.toString())
             Log.d(TAG, agentOutput.toString())
             Log.d(TAG,"🤖 LLM decided: ${agentOutput.nextGoal}")

@@ -85,7 +85,6 @@ class SettingsActivity : BaseNavigationActivity() {
         setupUI()
         loadAllSettings()
         setupAutoSavingListeners()
-        cacheVoiceSamples()
     }
 
     override fun onStop() {
