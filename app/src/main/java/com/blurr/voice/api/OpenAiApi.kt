@@ -23,7 +23,7 @@ object OpenAiApi : LlmApi {
         chat: List<Pair<String, List<Any>>>,
         images: List<android.graphics.Bitmap>,
         modelName: String?
-    ): String? {
+    ): com.blurr.voice.v2.AgentOutput? {
         val context = MyApplication.appContext
         val sharedPreferences = context.getSharedPreferences("BlurrSettings", Context.MODE_PRIVATE)
         val baseUrl = sharedPreferences.getString(SettingsActivity.KEY_CUSTOM_API_BASE_URL, "")
@@ -79,17 +79,9 @@ object OpenAiApi : LlmApi {
         return rootObject
     }
 
-    private fun parseSuccessResponse(responseBody: String): String? {
+    private fun parseSuccessResponse(responseBody: String): com.blurr.voice.v2.AgentOutput? {
         return try {
-            val json = JSONObject(responseBody)
-            val choices = json.getJSONArray("choices")
-            if (choices.length() > 0) {
-                val firstChoice = choices.getJSONObject(0)
-                val message = firstChoice.getJSONObject("message")
-                message.getString("content")
-            } else {
-                null
-            }
+            com.google.gson.Gson().fromJson(responseBody, com.blurr.voice.v2.AgentOutput::class.java)
         } catch (e: Exception) {
             Log.e("OpenAiApi", "Failed to parse successful response: $responseBody", e)
             null

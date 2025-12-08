@@ -57,7 +57,7 @@
         android:id="@+id/dividerContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/googleSignInButton"
+        android:layout_below="@id/skipLoginButton"
         android:layout_marginTop="24dp"
         android:layout_marginBottom="12dp"
         android:gravity="center_vertical"

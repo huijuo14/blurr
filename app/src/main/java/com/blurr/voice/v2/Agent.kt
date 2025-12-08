@@ -58,7 +58,7 @@ class Agent(
      */
     suspend fun run(initialTask: String, maxSteps: Int = 150) {
         if (initialTask.startsWith("open ", ignoreCase = true)) {
-            val appName = initialTask.substringAfter("open ")
+            val appName = initialTask.substringAfter("open ").trim()
             val wordCount = appName.trim().split(Regex("\\s+")).size
             if (appName.isNotBlank() && wordCount <= 2) {
                 Log.d(TAG, "--- Agent handling 'open app' command directly: '$appName' ---")
@@ -105,15 +105,10 @@ class Agent(
                 }.map { com.google.ai.client.generativeai.type.TextPart(it) }
                 Pair(message.role.toString(), textParts)
             }
-            val jsonResponse = llmApi.generateContent(apiChat)
-            val agentOutput: AgentOutput? = try {
-                com.google.gson.Gson().fromJson(jsonResponse, AgentOutput::class.java)
-            } catch (e: Exception) {
-                null
-            }
+            val agentOutput = llmApi.generateContent(apiChat)
 
             // --- Handle LLM Failure ---
-            if (agentOutput == null || jsonResponse == null) {
+            if (agentOutput == null) {
                 Log.d(TAG,"❌ LLM failed to return a valid action. Retrying...")
                 state.consecutiveFailures++
                 // Add a corrective message for the next attempt.
@@ -127,7 +122,7 @@ class Agent(
                 continue // Skip to the next loop iteration
             }
             state.consecutiveFailures = 0
-            state.lastModelOutput = com.google.gson.Gson().fromJson(jsonResponse, AgentOutput::class.java)
+            state.lastModelOutput = agentOutput
             Log.d(TAG, agentOutput.toString())
             Log.d(TAG, agentOutput.toString())
             Log.d(TAG,"🤖 LLM decided: ${agentOutput.nextGoal}")

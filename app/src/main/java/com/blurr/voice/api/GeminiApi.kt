@@ -41,7 +41,7 @@ object GeminiApi : LlmApi {
         chat: List<Pair<String, List<Any>>>,
         images: List<Bitmap>,
         modelName: String?
-    ): String? {
+    ): com.blurr.voice.v2.AgentOutput? {
         val finalModelName = modelName ?: "gemini-2.5-flash"
         val maxRetry = 4
         val context = MyApplication.appContext
@@ -143,7 +143,11 @@ object GeminiApi : LlmApi {
                     )
                     logToFirestore(logData)
 
-                    return parsedResponse
+                    return try {
+                        com.google.gson.Gson().fromJson(parsedResponse, com.blurr.voice.v2.AgentOutput::class.java)
+                    } catch (e: Exception) {
+                        null
+                    }
                 }
             } catch (e: Exception) {
                 val attemptEndTime = System.currentTimeMillis()
@@ -267,7 +271,11 @@ object GeminiApi : LlmApi {
                     )
                     logToFirestore(logData)
 
-                    return parsedResponse
+                    return try {
+                        com.google.gson.Gson().fromJson(parsedResponse, com.blurr.voice.v2.AgentOutput::class.java)
+                    } catch (e: Exception) {
+                        null
+                    }
                 }
             } catch (e: Exception) {
                 val attemptEndTime = System.currentTimeMillis()
