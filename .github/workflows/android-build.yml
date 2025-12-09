@@ -1,96 +1,98 @@
-name: Android CI with Debug  
-  
-on:  
-  push:  
-    branches: [ main, master ]  
-  pull_request:  
-    branches: [ main, master ]  
-  
-jobs:  
-  build:  
-    runs-on: ubuntu-latest  
-    timeout-minutes: 60  
+name: Android CI with Debug
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
       
-    steps:  
-    - uses: actions/checkout@v4  
+    steps:
+    - uses: actions/checkout@v4
       
-    - name: Set up JDK 17  
-      uses: actions/setup-java@v3  
-      with:  
-        java-version: '17'  
-        distribution: 'temurin'  
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
       
-    - name: Setup Android SDK  
-      uses: android-actions/setup-android@v2  
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v2
       
-    - name: Cache Gradle packages  
-      uses: actions/cache@v3  
-      with:  
-        path: |  
-          ~/.gradle/caches  
-          ~/.gradle/wrapper  
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}  
-        restore-keys: |  
-          ${{ runner.os }}-gradle-  
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
       
-    - name: Grant execute permission for gradlew  
-      run: chmod +x gradlew  
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
       
-    - name: Create local.properties with secrets  
-      run: |  
-        echo "📝 Creating local.properties..."  
-        echo "sdk.dir=$ANDROID_HOME" > local.properties  
-          
-        # Add your two API keys  
-        echo "GEMINI_API_KEYS=${{ secrets.GEMINI_API_KEYS }}" >> local.properties  
-        echo "PICOVOICE_ACCESS_KEY=${{ secrets.PICOVOICE_ACCESS_KEY }}" >> local.properties  
-          
-        # Set empty strings for all other keys  
-        echo "GOOGLE_TTS_API_KEY=" >> local.properties  
-        echo "TAVILY_API=" >> local.properties  
-        echo "MEM0_API=" >> local.properties  
-        echo "GCLOUD_GATEWAY_URL=" >> local.properties  
-        echo "GCLOUD_GATEWAY_PICOVOICE_KEY=" >> local.properties  
-        echo "GCLOUD_PROXY_URL=" >> local.properties  
-        echo "GCLOUD_PROXY_URL_KEY=" >> local.properties  
-        echo "REVENUE_CAT_PUBLIC_URL=" >> local.properties  
-        echo "REVENUECAT_API_KEY=" >> local.properties  
-          
-        echo "✅ local.properties created"  
-        echo "📋 Verifying contents:"  
-        cat local.properties | grep -E "(GEMINI_API_KEYS|PICOVOICE_ACCESS_KEY)" | sed 's/=.*/=***HIDDEN***/'  
+    - name: Create local.properties with secrets
+      run: |
+        echo "📝 Creating local.properties..."
+        echo "sdk.dir=$ANDROID_HOME" > local.properties
+        
+        # Add your secrets from GitHub Secrets
+        echo "GEMINI_API_KEYS=${{ secrets.GEMINI_API_KEYS }}" >> local.properties
+        echo "PICOVOICE_ACCESS_KEY=${{ secrets.PICOVOICE_ACCESS_KEY }}" >> local.properties
+        
+        # Add GCloud Proxy URL and Key from secrets
+        echo "GCLOUD_PROXY_URL=${{ secrets.GCLOUD_PROXY_URL }}" >> local.properties
+        echo "GCLOUD_PROXY_URL_KEY=${{ secrets.GCLOUD_PROXY_URL_KEY }}" >> local.properties
+        
+        # Set empty strings for all other keys
+        echo "GOOGLE_TTS_API_KEY=" >> local.properties
+        echo "TAVILY_API=" >> local.properties
+        echo "MEM0_API=" >> local.properties
+        echo "GCLOUD_GATEWAY_URL=" >> local.properties
+        echo "GCLOUD_GATEWAY_PICOVOICE_KEY=" >> local.properties
+        echo "REVENUE_CAT_PUBLIC_URL=" >> local.properties
+        echo "REVENUECAT_API_KEY=" >> local.properties
+        
+        echo "✅ local.properties created"
+        echo "📋 Verifying contents:"
+        cat local.properties | grep -E "(GEMINI_API_KEYS|PICOVOICE_ACCESS_KEY|GCLOUD_PROXY_URL|GCLOUD_PROXY_URL_KEY)" | sed 's/=.*/=***HIDDEN***/'
       
-    - name: Verify Gradle reads API keys  
-      run: |  
-        echo "🔍 Testing if Gradle can read API keys..."  
-        ./gradlew printBuildConfigFields || echo "Gradle task not found, continuing..."  
+    - name: Verify Gradle reads API keys
+      run: |
+        echo "🔍 Testing if Gradle can read API keys..."
+        ./gradlew printBuildConfigFields || echo "Gradle task not found, continuing..."
       
-    - name: Build with Gradle  
-      run: |  
-        echo "🚀 Starting build process..."  
-        ./gradlew assembleDebug  
+    - name: Build with Gradle
+      run: |
+        echo "🚀 Starting build process..."
+        ./gradlew assembleDebug
       
-    - name: Debug - Extract and verify API keys in APK  
-      if: always()  
-      run: |  
-        if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then  
-          echo "✅ APK built successfully"  
-          echo "🔍 Checking if API keys are in BuildConfig..."  
+    - name: Debug - Extract and verify API keys in APK
+      if: always()
+      run: |
+        if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
+          echo "✅ APK built successfully"
+          echo "🔍 Checking if API keys are in BuildConfig..."
             
-          # Extract strings from APK and check for API keys  
-          unzip -p app/build/outputs/apk/debug/app-debug.apk classes.dex | strings | grep -E "GEMINI_API_KEYS|PICOVOICE_ACCESS_KEY" | head -10  
+          # Extract strings from APK and check for API keys
+          unzip -p app/build/outputs/apk/debug/app-debug.apk classes.dex | strings | grep -E "GEMINI_API_KEYS|PICOVOICE_ACCESS_KEY|GCLOUD_PROXY_URL|GCLOUD_PROXY_URL_KEY" | head -10
             
-          # Also check the generated BuildConfig class if possible  
-          find app/build -name "BuildConfig.java" -exec cat {} \; 2>/dev/null | grep -E "GEMINI_API_KEYS|PICOVOICE_ACCESS_KEY" || echo "BuildConfig.java not found"  
-        else  
-          echo "❌ APK not found"  
-          find app/build -name "*.apk" -ls || echo "No APKs found"  
-        fi  
+          # Also check the generated BuildConfig class if possible
+          find app/build -name "BuildConfig.java" -exec cat {} \; 2>/dev/null | grep -E "GEMINI_API_KEYS|PICOVOICE_ACCESS_KEY|GCLOUD_PROXY_URL|GCLOUD_PROXY_URL_KEY" || echo "BuildConfig.java not found"
+        else
+          echo "❌ APK not found"
+          find app/build -name "*.apk" -ls || echo "No APKs found"
+        fi
       
-    - name: Upload APK  
-      if: success()  
-      uses: actions/upload-artifact@v4  
-      with:  
-        name: app-debug  
-        path: app/build/outputs/apk/debug/app-debug.apk  
+    - name: Upload APK
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
         retention-days: 30
